@@ -14,11 +14,12 @@ def mushroom_color(hp):
         return (255, 255, 255)
     return None
 
+sparks = []
+
 def on_segment_hit(segment, score):
-    """Called whenever a centipede segment is shot; add sparkles, sounds, or bonus points here."""
-    pass
-
-
+    """Create a spark effect at the destroyed segment's position."""
+    sparks.append([segment.row, segment.col, 0.25])
+    
 def wave_speed_bonus(wave):
     """Return an extra tick-rate multiplier for centipede segments at the given wave, or None for the default speed."""
     pass
@@ -48,6 +49,7 @@ class Game:
 
     def reset(self):
         self.score, self.lives, self.wave, self.state = 0, 3, 1, "play"
+        sparks.clear()
         self.mushrooms = {}
         for _ in range(45):
             self.mushrooms[(random.randint(1, ZONE_TOP - 2), random.randint(0, COLS - 1))] = MUSHROOM_HP
@@ -105,6 +107,10 @@ class Game:
     def update(self, dt, keys):
         if self.state != "play":
             return
+        for spark in sparks[:]:
+            spark[2] -= dt
+            if spark[2] <= 0:
+                sparks.remove(spark)
         self.invulnerable = max(0.0, self.invulnerable - dt)
         self.x += (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * PLAYER_SPEED * dt
         self.y += (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * PLAYER_SPEED * dt
@@ -145,6 +151,10 @@ class Game:
             pygame.draw.rect(screen, (255, 255, 255), (self.bullet.x - 1, self.bullet.y - 6, 3, 10))
         if self.invulnerable <= 0 or int(self.invulnerable * 10) % 2 == 0:
             pygame.draw.polygon(screen, (80, 200, 255), [(self.x, self.y - 10), (self.x + 10, self.y + 10), (self.x - 10, self.y + 10)])
+        for row, col, lifetime in sparks:
+            center = (col * CELL + CELL // 2, row * CELL + CELL // 2)
+            radius = max(3, int(14 * lifetime / 0.25))
+            pygame.draw.circle(screen, (255, 255, 255), center, radius, 2)
         hud = self.font.render(f"Score {self.score}  Lives {self.lives}  Wave {self.wave}  R = reset", True, (240, 240, 240))
         screen.blit(hud, (10, ROWS * CELL + 6))
         if self.state == "lose":
